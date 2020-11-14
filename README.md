@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Arduino ESP32 code and schematic for a 300V 3 stage electromagnetic coil gun.
+Arduino ESP32 code and schematic for a 300V 3 stage electromagnetic coil gun. A video showing a test fire is located at https://youtu.be/OdKDb0fnAb0
 
 This project shows the basic use of electromagnetic force to propel a projectile ball faster and faster through multiple coils that are fired as soon as the projectile reaches the next coil.  This design has not optimized the timing or "suck back" effect, and is merely to show the fundamentals of how a coil gun operates.
 
