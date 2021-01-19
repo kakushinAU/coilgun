@@ -1,8 +1,9 @@
 // This code has been tested on an ESP32 Arduino style board to operate a
 // multistage coil gun.  After startup, you can either fire the coils by
 // sending any character via a 115200 baud serial connection from a computer
-// alternatively, you can connect a manual pushbutton which momentarily grounds
-// pin 34.  Have fun and be safe.
+// Alternatively, you can connect a manual pushbutton which momentarily grounds
+// pin 34.  The ESP32 was programmed to operate at 240Mhz so that the 
+// reaction time is as fast as possible (~6us). Have fun and be safe.
 
 int sensor1 = 12;                                                         // set variable sensor1 as GPIO 12 on pin G12
 int sensor2 = 14;                                                         // set variable sensor2 as GPIO 14 on pin G14
@@ -16,14 +17,14 @@ float length = 0.050;                                                     // dis
 float stage1distance = .150;                                              // distance between start position and trigger 1 senor
 float stage2distance = .160;                                              // distance between trigger 1 and trigger 2 sensors
 volatile int flag1, flag2, flag3, flag4, flag5, fireEnable;               // flags for storing the state of sensors
-volatile unsigned long mark1, mark2, mark3, mark4, mark5, mark2A, mark3A; // initialize timestamps mark1 and mark2
-volatile unsigned long timeElapsed, timeOfLastCheck;                      // timestamp timeElapsed
+volatile unsigned long mark1, mark2, mark3, mark4, mark5, mark2A, mark3A; // initialize timestamps of various events
+volatile unsigned long timeElapsed, timeOfLastCheck;                      // initialize additional timestamp
 
 int coil1 = 25; // set variable coil1 as GPIO 25 on pin G25
 int coil2 = 26; // set variable coil2 as GPIO 26 on pin G26
 int coil3 = 27; // set variable coil3 as GPIO 27 on pin G27
 
-void IRAM_ATTR start() // Interrupt function: passed 1st sensor, remember time, set flag
+void IRAM_ATTR start() // Interrupt function: passed 1st speedometer sensor, remember time, set flag
 {
   if (flag4 == 0)
   {
@@ -32,7 +33,7 @@ void IRAM_ATTR start() // Interrupt function: passed 1st sensor, remember time, 
   }
 }
 
-void IRAM_ATTR finish() // Interrupt function: passed 2nd sensor, remember time, set flag
+void IRAM_ATTR finish() // Interrupt function: passed 2nd speedometer sensor, remember time, set flag
 {
   if (flag5 == 0)
   {
@@ -69,8 +70,8 @@ void setup()
   pinMode(trigger2, INPUT_PULLUP);               // configure pin input
   attachInterrupt(sensor1, start, RISING);       // set up interrupt pin to run function start
   attachInterrupt(sensor2, finish, RISING);      // set up interrupt pin to run function finish
-  attachInterrupt(trigger1, triggered1, RISING); // set up interrupt pin to run function finish
-  attachInterrupt(trigger2, triggered2, RISING); // set up interrupt pin to run function finish
+  attachInterrupt(trigger1, triggered1, RISING); // set up interrupt pin to run function triggered1
+  attachInterrupt(trigger2, triggered2, RISING); // set up interrupt pin to run function triggered2
   pinMode(coil1, OUTPUT);
   pinMode(coil2, OUTPUT);
   pinMode(coil3, OUTPUT);
@@ -82,9 +83,9 @@ void loop()
   checkSensorFault();    // FUNCTION - reset all of the sensors and outputs every 2 seconds
   checkForProjectile();  // FUNCTION - Check if speedometer sensor flags triggered, then calculate speed
   checkForFireCommand(); // FUNCTION - Check for serial fire command from computer
-  checkForFireButton();
+  checkForFireButton();  // FUNCTION - Check for physical fire button being pressed (optional)
   checkForFlag2();       // FUNCTION - Check whether projectile has entered stage 2, fire stage 2
-  checkForFlag3();       // FUNCTION - Check whether projectile has entered stage 2, fire stage 2
+  checkForFlag3();       // FUNCTION - Check whether projectile has entered stage 3, fire stage 3
   delayMicroseconds(10); // delay timer for stability
 }
 
@@ -128,7 +129,7 @@ void checkForFlag3()
 
 void checkForProjectile()
 {
-  if (flag4 == 1 && flag5 == 1) // if the projectile passed both sensors
+  if (flag4 == 1 && flag5 == 1) // if the projectile passed both speedometer sensors
   {
     velocity = (1000000 * (length) / (mark5 - mark4)); // speed calculation
     energy = 0.5 * mass * velocity * velocity * 1000;  // energy calculation
@@ -171,12 +172,12 @@ void checkForFireCommand()
 {
   if (Serial.available())
   {
-    if (Serial.available() > 0)
-    {
+    if (Serial.available() > 0)            // actually checks for any Serial transmission.
+    {                                      // doesn't have to be "fire"
       newText = Serial.readString();
       Serial.println("FIRING COIL GUN");
-      fireEnable = 1;
-      digitalWrite(coil1, HIGH);
+      fireEnable = 1;                     // arms the coil gun
+      digitalWrite(coil1, HIGH);          // fires the coil gun
       mark1 = micros();
     }
   }
@@ -188,8 +189,8 @@ void checkForFireButton()
   if (fireButtonStatus == LOW)
   {
     Serial.println("FIRE BUTTON PRESSED");
-    fireEnable = 1;
-    digitalWrite(coil1, HIGH);
+    fireEnable = 1;                     // arms the coil gun
+    digitalWrite(coil1, HIGH);          // fires the coil gun
     mark1 = micros();
   }
 }
